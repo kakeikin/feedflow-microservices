@@ -26,3 +26,7 @@ class InterestResponse(BaseModel):
     score: float
 
     model_config = {"from_attributes": True}
+
+
+class InterestDelta(BaseModel):
+    delta: float

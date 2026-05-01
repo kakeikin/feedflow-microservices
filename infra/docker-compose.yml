@@ -1,0 +1,158 @@
+services:
+  # ─── Databases ───────────────────────────────────────────────────────────────
+
+  user-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: feedflow
+      POSTGRES_PASSWORD: feedflow
+      POSTGRES_DB: users
+    ports:
+      - "5436:5432"
+    volumes:
+      - user-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U feedflow -d users"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  video-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: feedflow
+      POSTGRES_PASSWORD: feedflow
+      POSTGRES_DB: videos
+    ports:
+      - "5437:5432"
+    volumes:
+      - video-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U feedflow -d videos"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  event-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: feedflow
+      POSTGRES_PASSWORD: feedflow
+      POSTGRES_DB: events
+    ports:
+      - "5438:5432"
+    volumes:
+      - event-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U feedflow -d events"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Message Broker ──────────────────────────────────────────────────────────
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: feedflow
+      RABBITMQ_DEFAULT_PASS: feedflow
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Application Services ────────────────────────────────────────────────────
+
+  user-service:
+    build:
+      context: ../services/user-service
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://feedflow:feedflow@user-db:5432/users
+    depends_on:
+      user-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  video-service:
+    build:
+      context: ../services/video-service
+    ports:
+      - "8002:8002"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://feedflow:feedflow@video-db:5432/videos
+    depends_on:
+      video-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8002/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  event-service:
+    build:
+      context: ../services/event-service
+    ports:
+      - "8003:8003"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://feedflow:feedflow@event-db:5432/events
+      RABBITMQ_URL: amqp://feedflow:feedflow@rabbitmq:5672/
+    depends_on:
+      event-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  ranking-service:
+    build:
+      context: ../services/ranking-service
+    ports:
+      - "8004:8004"
+    environment:
+      USER_SERVICE_URL: http://user-service:8001
+      VIDEO_SERVICE_URL: http://video-service:8002
+    depends_on:
+      - user-service
+      - video-service
+
+  feed-service:
+    build:
+      context: ../services/feed-service
+    ports:
+      - "8005:8005"
+    environment:
+      VIDEO_SERVICE_URL: http://video-service:8002
+      RANKING_SERVICE_URL: http://ranking-service:8004
+    depends_on:
+      - video-service
+      - ranking-service
+
+  feature-worker:
+    build:
+      context: ../services/feature-worker
+    environment:
+      RABBITMQ_URL: amqp://feedflow:feedflow@rabbitmq:5672/
+      USER_SERVICE_URL: http://user-service:8001
+      VIDEO_SERVICE_URL: http://video-service:8002
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      video-service:
+        condition: service_healthy
+
+volumes:
+  user-db-data:
+  video-db-data:
+  event-db-data:

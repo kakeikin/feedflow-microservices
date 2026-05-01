@@ -3,13 +3,13 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func, literal
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 
 from .database import get_db
 from .models import User, UserInterest
-from .schemas import UserCreate, UserResponse, InterestCreate, InterestResponse
+from .schemas import UserCreate, UserResponse, InterestCreate, InterestResponse, InterestDelta
 
 router = APIRouter()
 
@@ -81,3 +81,53 @@ async def add_interest(user_id: str, body: InterestCreate, db: AsyncSession = De
         )
     )
     return result.scalar_one()
+
+
+@router.patch("/users/{user_id}/interests/{tag}", response_model=InterestResponse)
+async def patch_interest(user_id: str, tag: str, body: InterestDelta, db: AsyncSession = Depends(get_db)):
+    now = datetime.now(timezone.utc)
+
+    user_result = await db.execute(select(User).where(User.id == user_id))
+    if not user_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="User not found")
+
+    existing_result = await db.execute(
+        select(UserInterest).where(UserInterest.user_id == user_id, UserInterest.tag == tag)
+    )
+    existing = existing_result.scalar_one_or_none()
+
+    if existing is None and body.delta <= 0:
+        return InterestResponse(tag=tag, score=0.0)
+
+    new_score_for_insert = max(0.0, min(1.0, body.delta))
+
+    stmt = (
+        pg_insert(UserInterest)
+        .values(
+            id=str(uuid.uuid4()),
+            user_id=user_id,
+            tag=tag,
+            score=new_score_for_insert,
+            updated_at=now,
+        )
+        .on_conflict_do_update(
+            index_elements=["user_id", "tag"],
+            set_=dict(
+                score=func.greatest(
+                    literal(0.0),
+                    func.least(
+                        literal(1.0),
+                        UserInterest.__table__.c.score + body.delta,
+                    ),
+                ),
+                updated_at=now,
+            ),
+        )
+    )
+    await db.execute(stmt)
+    await db.commit()
+
+    final_result = await db.execute(
+        select(UserInterest).where(UserInterest.user_id == user_id, UserInterest.tag == tag)
+    )
+    return final_result.scalar_one()
