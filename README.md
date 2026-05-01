@@ -78,6 +78,14 @@ During live Docker Compose integration testing, two production-style issues were
 
 2. Fixed async SQLAlchemy response serialization by re-querying videos with `selectinload(Video.stats)` after commit, preventing `MissingGreenlet` errors caused by lazy loading outside the async session context.
 
-## Phase 2 (planned)
+## Phase 2: Event-Driven Feature Pipeline
 
-RabbitMQ message queue, Feature Worker for async interest updates, Redis caching.
+Phase 2 extends FeedFlow with an asynchronous RabbitMQ-based feature pipeline. When the Event Service receives a user interaction, it persists the event and publishes a `UserInteractionEvent` to RabbitMQ in a background task. The Feature Worker consumes the event, fetches video metadata, and updates video statistics and user interest scores through the domain-owning services.
+
+Key engineering decisions:
+- Event Service uses fire-and-forget background publishing to keep ingestion latency low.
+- User Service owns interest-score clamping and atomic upserts.
+- Video Service owns statistics mutation and completion-rate calculation.
+- Feature Worker computes deltas only and communicates through HTTP APIs.
+- Transient failures are retried up to 3 times before routing messages to a DLQ.
+- Phase 2 documents delivery and idempotency caveats, with outbox and processed-event tracking planned for later phases.

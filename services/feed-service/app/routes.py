@@ -1,6 +1,9 @@
+import logging
 from fastapi import APIRouter, HTTPException
-from . import clients
+from . import clients, cache
 from .schemas import FeedItem, FeedResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -12,6 +15,11 @@ async def health():
 
 @router.get("/feed/{user_id}", response_model=FeedResponse)
 async def get_feed(user_id: str) -> FeedResponse:
+    cached = await cache.get_feed(user_id)
+    if cached is not None:
+        items = [FeedItem(**item) for item in cached]
+        return FeedResponse(user_id=user_id, source="cache_hit", items=items)
+
     try:
         trending = await clients.get_trending_videos()
     except Exception as exc:
@@ -25,9 +33,10 @@ async def get_feed(user_id: str) -> FeedResponse:
             FeedItem(video_id=r["video_id"], score=r["score"], reason=r["reason"])
             for r in ranked
         ]
+        await cache.set_feed(user_id, [item.model_dump() for item in items])
         return FeedResponse(user_id=user_id, source="personalized_ranking", items=items)
-    except Exception:
-        # Graceful degradation: ranking service unavailable or non-2xx (spec-defined fallback)
+    except Exception as exc:
+        logger.warning("Ranking failed for user %s, falling back to trending: %s", user_id, exc)
         items = [
             FeedItem(video_id=v["id"], score=0.0, reason="trending_fallback")
             for v in trending

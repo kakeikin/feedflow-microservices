@@ -65,6 +65,16 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # ─── Application Services ────────────────────────────────────────────────────
 
   user-service:
@@ -133,9 +143,14 @@ services:
     environment:
       VIDEO_SERVICE_URL: http://video-service:8002
       RANKING_SERVICE_URL: http://ranking-service:8004
+      REDIS_URL: redis://redis:6379
     depends_on:
-      - video-service
-      - ranking-service
+      video-service:
+        condition: service_started
+      ranking-service:
+        condition: service_started
+      redis:
+        condition: service_healthy
 
   feature-worker:
     build:

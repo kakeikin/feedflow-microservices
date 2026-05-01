@@ -19,13 +19,30 @@ def compute_freshness(created_at: datetime) -> float:
     return max(0.0, 1.0 - age_hours / 168.0)
 
 
-def compute_popularity(likes: int, max_likes: int) -> float:
-    """0.0–1.0: likes normalized across the candidate set."""
-    if max_likes == 0:
+def compute_engagement(likes: int, skips: int, max_net_engagement: int) -> float:
+    """0.0–1.0: (likes - skips) normalized to the max net engagement in the candidate set."""
+    net = likes - skips
+    if net <= 0 or max_net_engagement == 0:
         return 0.0
-    return likes / max_likes
+    return min(1.0, net / max_net_engagement)
 
 
-def compute_final_score(interest_match: float, freshness: float, popularity: float) -> float:
-    """Weighted combination: 0.60 interest + 0.25 freshness + 0.15 popularity."""
-    return round(0.60 * interest_match + 0.25 * freshness + 0.15 * popularity, 4)
+def compute_completion_quality(completion_rate: float) -> float:
+    """0.0–1.0: video completion rate as reported by VideoStats."""
+    return max(0.0, min(1.0, completion_rate))
+
+
+def compute_final_score(
+    interest_match: float,
+    freshness: float,
+    engagement: float,
+    completion_quality: float,
+) -> float:
+    """Weighted combination: 0.45 interest + 0.20 freshness + 0.20 engagement + 0.15 completion."""
+    return round(
+        0.45 * interest_match
+        + 0.20 * freshness
+        + 0.20 * engagement
+        + 0.15 * completion_quality,
+        4,
+    )

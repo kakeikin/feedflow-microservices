@@ -5,7 +5,8 @@ from .schemas import RankRequest, RankItem
 from .ranking import (
     compute_interest_match,
     compute_freshness,
-    compute_popularity,
+    compute_engagement,
+    compute_completion_quality,
     compute_final_score,
 )
 
@@ -19,10 +20,8 @@ async def health():
 
 @router.post("/rank", response_model=list[RankItem])
 async def rank_videos(body: RankRequest) -> list[RankItem]:
-    # Fetch user interests — degrade gracefully if unavailable
     user_interests = await clients.get_user_interests(body.user_id)
 
-    # Fetch candidate videos — skip any that fail individually
     videos = []
     for video_id in body.candidate_video_ids:
         video = await clients.get_video(video_id)
@@ -32,7 +31,10 @@ async def rank_videos(body: RankRequest) -> list[RankItem]:
     if not videos:
         return []
 
-    max_likes = max(v.get("stats", {}).get("likes", 0) for v in videos)
+    max_net_engagement = max(
+        max(0, v.get("stats", {}).get("likes", 0) - v.get("stats", {}).get("skips", 0))
+        for v in videos
+    )
 
     results = []
     for video in videos:
@@ -42,12 +44,17 @@ async def rank_videos(body: RankRequest) -> list[RankItem]:
         try:
             created_at = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
         except (ValueError, AttributeError):
-            created_at = datetime.now(timezone.utc) - timedelta(days=9)
+            created_at = datetime.now(timezone.utc) - timedelta(days=9)  # beyond 7-day decay window → freshness=0.0
 
         interest = compute_interest_match(tags, user_interests)
         freshness = compute_freshness(created_at)
-        popularity = compute_popularity(stats.get("likes", 0), max_likes)
-        score = compute_final_score(interest, freshness, popularity)
+        engagement = compute_engagement(
+            stats.get("likes", 0),
+            stats.get("skips", 0),
+            max_net_engagement,
+        )
+        completion_quality = compute_completion_quality(stats.get("completion_rate", 0.0))
+        score = compute_final_score(interest, freshness, engagement, completion_quality)
 
         matched_tags = [t for t in tags if any(i["tag"] == t for i in user_interests)]
         reason = (
