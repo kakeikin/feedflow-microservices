@@ -72,7 +72,7 @@
       "targets": [
         {
           "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
-          "expr": "rate(feed_cache_hit_total[1m]) / (rate(feed_cache_hit_total[1m]) + rate(feed_cache_miss_total[1m]))",
+          "expr": "rate(feed_cache_hit_total[5m]) / (rate(feed_cache_hit_total[5m]) + rate(feed_cache_miss_total[5m]))",
           "legendFormat": "__auto",
           "refId": "A"
         }

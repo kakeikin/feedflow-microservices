@@ -78,6 +78,31 @@ During live Docker Compose integration testing, two production-style issues were
 
 2. Fixed async SQLAlchemy response serialization by re-querying videos with `selectinload(Video.stats)` after commit, preventing `MissingGreenlet` errors caused by lazy loading outside the async session context.
 
+## Phase 4: Observability
+
+Phase 4 adds Prometheus metrics and a Grafana dashboard across all six services.
+
+- **MetricsMiddleware** on every FastAPI service records `request_total` (method × route template × status) and `request_latency_seconds` histograms. Route labels use FastAPI's `scope["route"].path` so `/users/abc-123` is always recorded as `/users/{user_id}`, preventing high-cardinality label explosion.
+- **Business counters** per service: feed cache hit/miss/fallback, ranking candidate count histogram, event ingest/publish success/failure, worker processed/failed/retry/DLQ.
+- **Feature Worker** exposes a separate Prometheus HTTP server on port 9100 via `start_http_server()` (configurable via `METRICS_PORT`).
+- **Prometheus** scrapes all six services every 15 seconds. **Grafana** auto-provisions a 11-panel *FeedFlow Overview* dashboard on first boot.
+
+### Prometheus — all 6 targets UP
+
+![Prometheus targets part 1](docs/screenshots/phase4/prometheus-targets-1.png)
+![Prometheus targets part 2](docs/screenshots/phase4/prometheus-targets-2.png)
+
+### Grafana — FeedFlow Overview dashboard
+
+![Grafana dashboard — feed, ranking, event panels](docs/screenshots/phase4/grafana-dashboard-top.png)
+![Grafana dashboard — user, video, worker panels](docs/screenshots/phase4/grafana-dashboard-bottom.png)
+
+### RabbitMQ Management UI
+
+RabbitMQ Management UI confirms the event pipeline topology, active Feature Worker consumer, and DLQ setup.
+
+![RabbitMQ overview](docs/screenshots/phase4/rabbitmq-overview.png)
+
 ## Phase 3: Redis Cache + Ranking Enhancement
 
 Phase 3 connects the Phase 2 async feature pipeline to feed quality and performance.
