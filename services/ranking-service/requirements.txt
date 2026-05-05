@@ -3,3 +3,4 @@ uvicorn==0.32.1
 pydantic==2.10.3
 httpx==0.28.1
 pytest==8.3.4
+prometheus-client==0.20.0

@@ -9,6 +9,7 @@ from .ranking import (
     compute_completion_quality,
     compute_final_score,
 )
+from .metrics import RANKING_CANDIDATE_COUNT, RANKING_UPSTREAM_ERROR_TOTAL
 
 router = APIRouter()
 
@@ -27,6 +28,10 @@ async def rank_videos(body: RankRequest) -> list[RankItem]:
         video = await clients.get_video(video_id)
         if video is not None:
             videos.append(video)
+        else:
+            RANKING_UPSTREAM_ERROR_TOTAL.inc()
+
+    RANKING_CANDIDATE_COUNT.observe(len(videos))
 
     if not videos:
         return []

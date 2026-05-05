@@ -35,16 +35,17 @@ def test_publish_event_sends_correct_body_and_routing_key():
     publisher._exchange = None  # cleanup
 
 
-def test_publish_event_no_op_when_not_connected():
-    """publish_event() logs and returns without raising when exchange is None."""
+def test_publish_event_raises_when_not_connected():
+    """publish_event() raises RuntimeError when exchange is None."""
+    import pytest
     from app import publisher
     publisher._exchange = None
 
     event_data = {"event_id": "evt-1", "user_id": "u-1", "video_id": "v-1",
                   "event_type": "like", "completion_rate": None, "watch_time_seconds": None}
 
-    # Should not raise
-    asyncio.run(publisher.publish_event(event_data))
+    with pytest.raises(RuntimeError, match="RabbitMQ not connected"):
+        asyncio.run(publisher.publish_event(event_data))
 
 
 def test_publish_event_logs_and_swallows_exception():

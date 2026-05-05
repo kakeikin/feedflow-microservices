@@ -1,11 +1,19 @@
 import json
 import logging
+import time
 import httpx
 import aio_pika
 from aio_pika import Message, DeliveryMode
 
 from . import clients
 from .mapping import EVENT_DELTA_MAP
+from .metrics import (
+    WORKER_PROCESSED_TOTAL,
+    WORKER_FAILED_TOTAL,
+    WORKER_RETRY_TOTAL,
+    WORKER_DLQ_TOTAL,
+    WORKER_LATENCY,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +24,18 @@ MAX_RETRIES = 3
 
 
 async def handle_message(
+    message: aio_pika.IncomingMessage,
+    exchange: aio_pika.abc.AbstractExchange,
+    default_exchange: aio_pika.abc.AbstractExchange,
+) -> None:
+    start = time.time()
+    try:
+        await _process_message(message, exchange, default_exchange)
+    finally:
+        WORKER_LATENCY.observe(time.time() - start)
+
+
+async def _process_message(
     message: aio_pika.IncomingMessage,
     exchange: aio_pika.abc.AbstractExchange,
     default_exchange: aio_pika.abc.AbstractExchange,
@@ -114,6 +134,7 @@ async def handle_message(
             return
 
     await message.ack()
+    WORKER_PROCESSED_TOTAL.inc()
 
 
 async def _handle_retry(
@@ -131,8 +152,11 @@ async def _handle_retry(
         )
         await exchange.publish(new_message, routing_key=ROUTING_KEY)
         logger.warning(json.dumps({"action": "retry", "x-retry-count": retry_count + 1}))
+        WORKER_RETRY_TOTAL.inc()
     else:
         dead_message = Message(body=message.body, delivery_mode=DeliveryMode.PERSISTENT)
         await default_exchange.publish(dead_message, routing_key=DLQ_NAME)
         logger.error(json.dumps({"action": "dlq", "x-retry-count": retry_count}))
+        WORKER_DLQ_TOTAL.inc()
+        WORKER_FAILED_TOTAL.inc()
     await message.ack()

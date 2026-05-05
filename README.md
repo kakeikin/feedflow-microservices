@@ -78,6 +78,23 @@ During live Docker Compose integration testing, two production-style issues were
 
 2. Fixed async SQLAlchemy response serialization by re-querying videos with `selectinload(Video.stats)` after commit, preventing `MissingGreenlet` errors caused by lazy loading outside the async session context.
 
+## Phase 3: Redis Cache + Ranking Enhancement
+
+Phase 3 connects the Phase 2 async feature pipeline to feed quality and performance.
+
+- Added Redis cache-aside pattern to Feed Service. First request is a cache miss and triggers full ranking; subsequent requests return `source=cache_hit` from Redis with a 5-minute TTL. If Redis is unavailable, Feed Service bypasses cache and continues serving results.
+- Added `source` metadata to feed responses: `cache_hit` | `personalized_ranking` | `trending_fallback`.
+- Upgraded Ranking Service from a 3-factor to a 4-factor scoring formula incorporating `completion_rate` and net engagement (likes − skips):
+
+```
+score = 0.45 × interest_match_score
+      + 0.20 × freshness_score
+      + 0.20 × engagement_score
+      + 0.15 × completion_quality_score
+```
+
+- Added integration tests proving cache hit on second request and that like + complete events processed by Feature Worker increase a video's ranking score.
+
 ## Phase 2: Event-Driven Feature Pipeline
 
 Phase 2 extends FeedFlow with an asynchronous RabbitMQ-based feature pipeline. When the Event Service receives a user interaction, it persists the event and publishes a `UserInteractionEvent` to RabbitMQ in a background task. The Feature Worker consumes the event, fetches video metadata, and updates video statistics and user interest scores through the domain-owning services.

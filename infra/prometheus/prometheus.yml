@@ -1,0 +1,34 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: feed-service
+    static_configs:
+      - targets: ['feed-service:8005']
+    metrics_path: /metrics
+
+  - job_name: ranking-service
+    static_configs:
+      - targets: ['ranking-service:8004']
+    metrics_path: /metrics
+
+  - job_name: event-service
+    static_configs:
+      - targets: ['event-service:8003']
+    metrics_path: /metrics
+
+  - job_name: user-service
+    static_configs:
+      - targets: ['user-service:8001']
+    metrics_path: /metrics
+
+  - job_name: video-service
+    static_configs:
+      - targets: ['video-service:8002']
+    metrics_path: /metrics
+
+  - job_name: feature-worker
+    static_configs:
+      - targets: ['feature-worker:9100']
+    metrics_path: /metrics

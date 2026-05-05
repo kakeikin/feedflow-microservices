@@ -10,8 +10,22 @@ from .database import get_db
 from .models import Event
 from .schemas import EventCreate, EventResponse
 from . import publisher
+from .metrics import (
+    EVENT_INGEST_TOTAL,
+    EVENT_DUPLICATE_TOTAL,
+    EVENT_PUBLISH_SUCCESS_TOTAL,
+    EVENT_PUBLISH_FAILURE_TOTAL,
+)
 
 router = APIRouter()
+
+
+async def _publish_and_record(event_data: dict) -> None:
+    try:
+        await publisher.publish_event(event_data)
+        EVENT_PUBLISH_SUCCESS_TOTAL.inc()
+    except Exception:
+        EVENT_PUBLISH_FAILURE_TOTAL.inc()
 
 
 @router.get("/health")
@@ -46,12 +60,14 @@ async def create_event(
             "completion_rate": event.completion_rate,
             "watch_time_seconds": event.watch_time_seconds,
         }
-        background_tasks.add_task(publisher.publish_event, event_data)
+        EVENT_INGEST_TOTAL.inc()
+        background_tasks.add_task(_publish_and_record, event_data)
         return JSONResponse(status_code=201, content={"id": event.id, "status": "created"})
     except IntegrityError as exc:
         await db.rollback()
         pg_code = getattr(exc.orig, "pgcode", None)
         if pg_code == "23505":
+            EVENT_DUPLICATE_TOTAL.inc()
             return JSONResponse(status_code=200, content={"status": "duplicate_ignored"})
         raise
 

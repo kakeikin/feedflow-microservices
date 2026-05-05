@@ -35,7 +35,7 @@ async def disconnect() -> None:
 async def publish_event(event_data: dict) -> None:
     if _exchange is None:
         logger.error("RabbitMQ not connected; skipping publish for event_id=%s", event_data.get("event_id"))
-        return
+        raise RuntimeError("RabbitMQ not connected")
     try:
         message = aio_pika.Message(
             body=json.dumps(event_data).encode(),

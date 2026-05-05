@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import aio_pika
+from prometheus_client import start_http_server
 
 from . import consumer
 
@@ -13,6 +14,11 @@ EXCHANGE_NAME = "user.events"
 QUEUE_NAME = "feature.update.queue"
 DLQ_NAME = "feature.update.dlq"
 ROUTING_KEY = "user.interaction"
+
+
+def start_metrics_server() -> None:
+    port = int(os.environ.get("METRICS_PORT", "9100"))
+    start_http_server(port)
 
 
 async def main() -> None:
@@ -39,4 +45,5 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    start_metrics_server()
     asyncio.run(main())

@@ -1,0 +1,255 @@
+{
+  "__inputs": [],
+  "__requires": [],
+  "annotations": {"list": []},
+  "description": "FeedFlow microservices observability dashboard",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+          "expr": "rate(feed_request_total[1m])",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "title": "Feed Request Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+      "id": 2,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+          "expr": "histogram_quantile(0.95, rate(feed_request_latency_seconds_bucket[5m]))",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "title": "Feed Request Latency p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 0.5},
+              {"color": "green", "value": 0.8}
+            ]
+          },
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 0},
+      "id": 3,
+      "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+          "expr": "rate(feed_cache_hit_total[1m]) / (rate(feed_cache_hit_total[1m]) + rate(feed_cache_miss_total[1m]))",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "title": "Feed Cache Hit Rate",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 8},
+      "id": 4,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+          "expr": "rate(ranking_request_total[1m])",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "title": "Ranking Request Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 8},
+      "id": 5,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+          "expr": "histogram_quantile(0.95, rate(ranking_candidate_count_bucket[5m]))",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "title": "Ranking Candidate Count p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 8},
+      "id": 6,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+          "expr": "rate(event_ingest_total[1m])",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "title": "Event Ingest Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 16},
+      "id": 7,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+          "expr": "rate(user_request_total[1m])",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "title": "User Request Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 16},
+      "id": 8,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+          "expr": "rate(video_request_total[1m])",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "title": "Video Request Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 16},
+      "id": 9,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+          "expr": "rate(worker_message_processed_total[1m])",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "title": "Worker Processed Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 24},
+      "id": 10,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+          "expr": "rate(worker_message_retry_total[1m])",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "title": "Worker Retry Rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 1}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 24},
+      "id": 11,
+      "options": {"legend": {"calcs": [], "displayMode": "list", "placement": "bottom"}, "tooltip": {"mode": "single"}},
+      "targets": [
+        {
+          "datasource": {"type": "prometheus", "uid": "feedflow-prometheus"},
+          "expr": "histogram_quantile(0.95, rate(worker_processing_latency_seconds_bucket[5m]))",
+          "legendFormat": "__auto",
+          "refId": "A"
+        }
+      ],
+      "title": "Worker Processing Latency p95",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["feedflow"],
+  "templating": {"list": []},
+  "time": {"from": "now-1h", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "FeedFlow Overview",
+  "uid": "feedflow-overview",
+  "version": 1,
+  "weekStart": ""
+}
